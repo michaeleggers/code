@@ -96,16 +96,20 @@ def generate_gpskel_json():
     }
     boneInfos = []
 
+    # armature = find_armature(bpy.context.active_object)
+    armature = bpy.data.armatures['Armature']
+    armature.pose_position = 'REST'
     armature = find_armature(bpy.context.active_object)
+
     if armature:
-        armature = armature.data
-        for i, bone in enumerate(armature.bones):
+        # armature = armature.data
+        for i, bone in enumerate(armature.pose.bones):
             parentBone = bone.parent
             parentIndex = -1
             if parentBone:
-                parentIndex = armature.bones.find(parentBone.name)
+                parentIndex = armature.pose.bones.find(parentBone.name)
             
-            local_matrix = bone.matrix_local
+            local_matrix = bone.matrix_basis
             trans = local_matrix.to_translation()
             rot = local_matrix.to_quaternion()
             boneInfo = {
@@ -113,13 +117,13 @@ def generate_gpskel_json():
                 "index": i,
                 "parent": parentIndex,
                 "bindpose": {
-                    "rot": [rot.x, rot.y, rot.z, rot.w],
-                    "trans": [trans.x, trans.y, trans.z]
+                    "rot": [-rot.y, rot.x, rot.z, rot.w],
+                    "trans": [-trans.y, trans.x, trans.z]
                 }
             }
             boneInfos.append(boneInfo)
         
-        gpskel["bonecount"] = len(armature.bones)
+        gpskel["bonecount"] = len(armature.pose.bones)
 
     gpskel["bones"] = boneInfos
 
@@ -137,6 +141,8 @@ def generate_gpanim_json(action):
     }
     active_object = bpy.context.active_object
     # active_object.animation_data.action = action
+    armature = bpy.data.armatures['Armature']
+    armature.pose_position = 'POSE'
     armature = find_armature(active_object)
     armature.animation_data.action = action
     frame_start, frame_end = int(action.frame_range.x), int(action.frame_range.y)
@@ -145,15 +151,16 @@ def generate_gpanim_json(action):
     for i, bone in enumerate(armature.pose.bones):
         track = {
             "bone": i,
+            "name:": bone.name,
             "transforms": []
         }
         for frame in range(frame_start, frame_end):
             bpy.context.scene.frame_set(frame)
-            rot = bone.matrix.to_quaternion()
-            trans = bone.matrix.to_translation()
+            rot = bone.matrix_basis.to_quaternion()
+            trans = bone.matrix_basis.to_translation()
             transform = {
-                "rot": [rot.x, rot.y, rot.z, rot.w],
-                "trans": [trans.x, trans.y, trans.z]
+                "rot": [-rot.y, rot.x, rot.z, rot.w],
+                "trans": [-trans.y, trans.x, trans.z]
             }
             track["transforms"].append(transform)
 
